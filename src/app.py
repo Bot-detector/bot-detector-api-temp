@@ -11,11 +11,17 @@ from src.cogs import predict
 from src.cogs import classifier
 from src.cogs import train_model
 
+
 logger = logging.getLogger(__name__)
 
 scraper = Scraper(proxy="")
-binary_classifier = classifier.classifier("binaryClassifier")
-multi_classifier = classifier.classifier("multiClassifier")
+
+binary_classifier = classifier.classifier("binaryClassifier").load()
+multi_classifier = classifier.classifier("multiClassifier").load()
+
+if binary_classifier is None or multi_classifier is None:
+    binary_classifier = classifier.classifier("binaryClassifier")
+    multi_classifier = classifier.classifier("multiClassifier")
 
 @app.get("/")
 async def root():
@@ -28,7 +34,13 @@ async def favicon():
 
 @app.get("/train")
 def train():
+    global binary_classifier, multi_classifier
     train_model.train(binary_classifier, multi_classifier)
+    binary_classifier = classifier.classifier("binaryClassifier").load()
+    multi_classifier = classifier.classifier("multiClassifier").load()
+    return {
+        "detail": "model trained"
+    }
 
 @app.post("/{version}/plugin/detect/{manual_detect}")
 async def post_detect(version, manual_detect):
@@ -52,13 +64,16 @@ async def get_prediction(player_name, version=None, token=None):
     player = {"id": 1, "name": player_name}
     async with aiohttp.ClientSession() as session:
         player_data = await scraper.lookup_hiscores(player=player, session=session)
-    logger.debug(player_data)
 
-    predict.predict([player_data], player_name, binary_classifier, multi_classifier)
-    # TODO: parse data
-    # TODO: post to ML
-    # TODO: return prediction
-    raise HTTPException(
-        status_code=status.HTTP_418_IM_A_TEAPOT,
-        detail="The Plugin is currently in Safe Mode while we restore full functionality.",
-    )
+    data = predict.predict([player_data], [player], binary_classifier, multi_classifier)
+    data = data[0]
+    [logger.debug({k:v}) for k,v in data.items()]
+    data = {
+        "player_id": data.pop("id"),
+        "player_name": data.pop("name"),
+        "prediction_label": data.pop("Prediction"),
+        "prediction_confidence": data.pop("Predicted_confidence"),
+        "created": data.pop("created"),
+        "predictions_breakdown": data,
+    }
+    return data

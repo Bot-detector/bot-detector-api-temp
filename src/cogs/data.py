@@ -3,6 +3,7 @@ from typing import List
 
 import numpy as np
 import pandas as pd
+from src.cogs.Inputs import Inputs
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,57 @@ minigames = [
     "lms_rank",
     "soul_wars_zeal",
 ]
+bosses = [
+    "abyssal_sire",
+    "alchemical_hydra",
+    "barrows_chests",
+    "bryophyta",
+    "callisto",
+    "cerberus",
+    "chambers_of_xeric",
+    "chambers_of_xeric_challenge_mode",
+    "chaos_elemental",
+    "chaos_fanatic",
+    "commander_zilyana",
+    "corporeal_beast",
+    "crazy_archaeologist",
+    "dagannoth_prime",
+    "dagannoth_rex",
+    "dagannoth_supreme",
+    "deranged_archaeologist",
+    "general_graardor",
+    "giant_mole",
+    "grotesque_guardians",
+    "hespori",
+    "kalphite_queen",
+    "king_black_dragon",
+    "kraken",
+    "kreearra",
+    "kril_tsutsaroth",
+    "mimic",
+    "nightmare",
+    "nex",
+    "phosanis_nightmare",
+    "obor",
+    "sarachnis",
+    "scorpia",
+    "skotizo",
+    "tempoross",
+    "the_gauntlet",
+    "the_corrupted_gauntlet",
+    "theatre_of_blood",
+    "theatre_of_blood_hard",
+    "thermonuclear_smoke_devil",
+    "tzkal_zuk",
+    "tztok_jad",
+    "venenatis",
+    "vetion",
+    "vorkath",
+    "wintertodt",
+    "zalcano",
+    "zulrah",
+]
+
 
 class hiscoreData:
     """
@@ -57,6 +109,7 @@ class hiscoreData:
 
         self.skills = skills
         self.minigames = minigames
+        self.bosses = bosses
 
         self.__clean()
         self.__skill_ratio()
@@ -76,17 +129,21 @@ class hiscoreData:
             - fill na with 0
             - create a dataframe with only low level players (total level < 1_000_000)
         """
-        # self.df_clean.drop(columns=["id", "timestamp", "ts_date"], inplace=True) # not needed in this repo
+        for c in ["id", "timestamp", "ts_date"]:
+            try:
+                self.df_clean.drop(columns=c, inplace=True)
+            except:
+                continue
+
         # set index to player id
         self.df_clean.set_index(["Player_id"], inplace=True)
 
         # if not on the hiscores it shows -1, replace with 0
         self.df_clean = self.df_clean.replace(-1, 0)
 
-        # bosses
-        self.bosses = [
-            c for c in self.df_clean.columns if c not in ["total"] + skills + minigames
-        ]
+        columns = ["total"] + self.skills + self.minigames + self.bosses
+        self.df_clean = self.df_clean[columns]
+
         # total is not always on hiscores, create a total level column
         self.df_clean["total"] = self.df_clean[self.skills].sum(axis=1)
         # create a total boss level column
@@ -127,12 +184,12 @@ class hiscoreData:
             - fill na with 0
         """
         self.boss_ratio = pd.DataFrame(index=self.df_clean.index)
-        logger.debug(
-            self.df_clean.describe()
-        )
-        logger.debug(
-            self.df_clean.info()
-        )
+        # logger.debug(
+        #     self.df_clean.describe()
+        # )
+        # logger.debug(
+        #     self.df_clean.info()
+        # )
         total = self.df_clean["boss_total"]
         for boss in self.bosses:
             self.boss_ratio[f"{boss}/total"] = self.df_clean[boss] / total

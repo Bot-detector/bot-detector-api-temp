@@ -8,9 +8,14 @@ logger = logging.getLogger(__name__)
 
 def train(binary_classifier:classifier, multi_classifier:classifier):
     logger.debug("reading hiscores")
-    hiscores = pd.read_csv("src/cogs/data/hiscores.csv").to_dict(orient="records")
+    hiscores = pd.read_csv("src/cogs/data/hiscores.csv")
+    hiscores.drop(columns=["Unnamed: 0"], inplace=True)
+    hiscores = hiscores.rename(columns={"Tempoross":"tempoross"})
+    hiscores = hiscores.to_dict(orient="records")
+
     logger.debug("reading players")
     players = pd.read_csv("src/cogs/data/players.csv").to_dict(orient="records")
+
     logger.debug("reading labels")
     labels = pd.read_csv("src/cogs/data/labels.csv").to_dict(orient="records")
 
