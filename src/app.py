@@ -26,7 +26,7 @@ async def favicon():
 async def post_detect(version, manual_detect):
     raise HTTPException(
         status_code=status.HTTP_418_IM_A_TEAPOT,
-        detail="We are currently having database issues, our admins are on it!",
+        detail="The Plugin is currently in Safe Mode while we restore full functionality.",
     )
 
 
@@ -34,7 +34,7 @@ async def post_detect(version, manual_detect):
 async def get_contributions(version, contributor):
     raise HTTPException(
         status_code=status.HTTP_418_IM_A_TEAPOT,
-        detail="We are currently having database issues, our admins are on it!",
+        detail="The Plugin is currently in Safe Mode while we restore full functionality.",
     )
 
 
@@ -50,5 +50,5 @@ async def get_prediction(player_name, version=None, token=None):
     # TODO: return prediction
     raise HTTPException(
         status_code=status.HTTP_418_IM_A_TEAPOT,
-        detail="We are currently having database issues, our admins are on it!",
+        detail="The Plugin is currently in Safe Mode while we restore full functionality.",
     )
