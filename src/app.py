@@ -67,7 +67,7 @@ async def get_prediction(player_name, version=None, token=None):
 
     data = predict.predict([player_data], [player], binary_classifier, multi_classifier)
     data = data[0]
-    [logger.debug({k:v}) for k,v in data.items()]
+    # [logger.debug({k:v}) for k,v in data.items()]
     data = {
         "player_id": data.pop("id"),
         "player_name": data.pop("name"),
