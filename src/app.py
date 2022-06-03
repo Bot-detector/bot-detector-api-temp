@@ -1,3 +1,4 @@
+import imp
 import logging
 
 import aiohttp
@@ -6,11 +7,15 @@ from fastapi.exceptions import HTTPException
 
 from src.cogs.scraper import Scraper
 from src.config import app
+from src.cogs import predict
+from src.cogs import classifier
+from src.cogs import train_model
 
 logger = logging.getLogger(__name__)
 
 scraper = Scraper(proxy="")
-
+binary_classifier = classifier.classifier("binaryClassifier")
+multi_classifier = classifier.classifier("multiClassifier")
 
 @app.get("/")
 async def root():
@@ -21,6 +26,9 @@ async def root():
 async def favicon():
     return {}
 
+@app.get("/train")
+def train():
+    train_model.train(binary_classifier, multi_classifier)
 
 @app.post("/{version}/plugin/detect/{manual_detect}")
 async def post_detect(version, manual_detect):
@@ -45,6 +53,8 @@ async def get_prediction(player_name, version=None, token=None):
     async with aiohttp.ClientSession() as session:
         player_data = await scraper.lookup_hiscores(player=player, session=session)
     logger.debug(player_data)
+
+    predict.predict([player_data], player_name, binary_classifier, multi_classifier)
     # TODO: parse data
     # TODO: post to ML
     # TODO: return prediction
