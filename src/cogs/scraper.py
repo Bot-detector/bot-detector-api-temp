@@ -66,7 +66,7 @@ class Scraper:
                     logger.debug(
                         f"{player['name']} does not exist on hiscores. trying runemetrics"
                     )
-                    return {"error": player}
+                    return None
                 elif response.status == 502:
                     logger.warning("502 proxy error")
                     await asyncio.sleep(1)
