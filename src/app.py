@@ -65,6 +65,12 @@ async def get_prediction(player_name, version=None, token=None):
     async with aiohttp.ClientSession() as session:
         player_data = await scraper.lookup_hiscores(player=player, session=session)
 
+    if player_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The Player is not found on the hiscores.",
+        )
+        
     data = predict.predict([player_data], [player], binary_classifier, multi_classifier)
     data = data[0]
     # [logger.debug({k:v}) for k,v in data.items()]
@@ -72,8 +78,8 @@ async def get_prediction(player_name, version=None, token=None):
         "player_id": data.pop("id"),
         "player_name": data.pop("name"),
         "prediction_label": data.pop("Prediction"),
-        "prediction_confidence": data.pop("Predicted_confidence"),
+        "prediction_confidence": float(data.pop("Predicted_confidence"))/100,
         "created": data.pop("created"),
-        "predictions_breakdown": data,
+        "predictions_breakdown": {k:float(v)/100 for k,v in data.items()},
     }
     return data
