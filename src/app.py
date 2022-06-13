@@ -34,6 +34,11 @@ async def favicon():
 
 @app.get("/train")
 def train():
+    if 1:
+        raise HTTPException(
+            status_code=status.HTTP_418_IM_A_TEAPOT,
+            detail="The Plugin is currently in Safe Mode while we restore full functionality.",
+        )
     global binary_classifier, multi_classifier
     train_model.train(binary_classifier, multi_classifier)
     binary_classifier = classifier.classifier("binaryClassifier").load()
