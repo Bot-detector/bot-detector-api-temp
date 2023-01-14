@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import time
 
 import joblib
@@ -9,7 +10,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (balanced_accuracy_score, classification_report,
                              roc_auc_score)
 
+import src
+
 logger = logging.getLogger(__name__)
+
+
+# sys.modules["api"] = src
+# sys.modules["api.MachineLearning.classifier"] = src.cogs.classifier
 
 class classifier(RandomForestClassifier):
     """
@@ -56,6 +63,10 @@ class classifier(RandomForestClassifier):
                 # add dict to array
                 files.append(d)
 
+
+        if not files:
+            return None
+
         # array of dict can be used for pandas dataframe
         df_files = pd.DataFrame(files)
         df_files.sort_values(by=["date"], ascending=False, inplace=True)
@@ -67,12 +78,15 @@ class classifier(RandomForestClassifier):
         Loads the model object from the file.
         :return: classifier object
         """
-        try:
-            self = self.__best_file_path(self.name)
+
+        model = self.__best_file_path(self.name)
+        if model:
+            self = model
             logger.debug(f"Loading: {self.name}, {self.path}")
-        except Exception as exception:
-            logger.warning(f"Error when loading {self.name}: {exception}", exc_info=True)
+        else:
+            logger.debug("No model defined")
             return
+
         self.loaded = True
         return self
 

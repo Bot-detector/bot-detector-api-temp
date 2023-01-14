@@ -3,7 +3,6 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from src.cogs.Inputs import Inputs
 
 logger = logging.getLogger(__name__)
 
@@ -46,56 +45,6 @@ minigames = [
     "lms_rank",
     "soul_wars_zeal",
 ]
-bosses = [
-    "abyssal_sire",
-    "alchemical_hydra",
-    "barrows_chests",
-    "bryophyta",
-    "callisto",
-    "cerberus",
-    "chambers_of_xeric",
-    "chambers_of_xeric_challenge_mode",
-    "chaos_elemental",
-    "chaos_fanatic",
-    "commander_zilyana",
-    "corporeal_beast",
-    "crazy_archaeologist",
-    "dagannoth_prime",
-    "dagannoth_rex",
-    "dagannoth_supreme",
-    "deranged_archaeologist",
-    "general_graardor",
-    "giant_mole",
-    "grotesque_guardians",
-    "hespori",
-    "kalphite_queen",
-    "king_black_dragon",
-    "kraken",
-    "kreearra",
-    "kril_tsutsaroth",
-    "mimic",
-    "nightmare",
-    "nex",
-    "phosanis_nightmare",
-    "obor",
-    "sarachnis",
-    "scorpia",
-    "skotizo",
-    "tempoross",
-    "the_gauntlet",
-    "the_corrupted_gauntlet",
-    "theatre_of_blood",
-    "theatre_of_blood_hard",
-    "thermonuclear_smoke_devil",
-    "tzkal_zuk",
-    "tztok_jad",
-    "venenatis",
-    "vetion",
-    "vorkath",
-    "wintertodt",
-    "zalcano",
-    "zulrah",
-]
 
 
 class hiscoreData:
@@ -109,7 +58,6 @@ class hiscoreData:
 
         self.skills = skills
         self.minigames = minigames
-        self.bosses = bosses
 
         self.__clean()
         self.__skill_ratio()
@@ -118,39 +66,47 @@ class hiscoreData:
     def __clean(self) -> None:
         """
         Cleanup the dataframe.
-
         This method will:
             - drop unnecessary columns
             - set the index to the player id
             - replace -1 with 0
             - create a list of bosses (not skills or minigames)
-            - create a total level column
-            - create a total boss level column
+            - create a total xp column
+            - create a total boss kc column
+            - reduces memory of dataframe
             - fill na with 0
             - create a dataframe with only low level players (total level < 1_000_000)
         """
-        for c in ["id", "timestamp", "ts_date"]:
-            try:
-                self.df_clean.drop(columns=c, inplace=True)
-            except:
-                continue
-
+        columns = [c for c in self.df_clean.columns if c in ["id", "timestamp", "ts_date"]]
+        self.df_clean.drop(columns=columns, inplace=True)
         # set index to player id
         self.df_clean.set_index(["Player_id"], inplace=True)
 
         # if not on the hiscores it shows -1, replace with 0
         self.df_clean = self.df_clean.replace(-1, 0)
 
-        columns = ["total"] + self.skills + self.minigames + self.bosses
-        self.df_clean = self.df_clean[columns]
-
-        # total is not always on hiscores, create a total level column
+        # bosses
+        self.bosses = [
+            c for c in self.df_clean.columns if c not in ["total"] + skills + minigames
+        ]
+        # total is not always on hiscores, create a total xp column
         self.df_clean["total"] = self.df_clean[self.skills].sum(axis=1)
-        # create a total boss level column
-        self.df_clean["boss_total"] = self.df_clean[self.bosses].sum(axis=1)
+
+        # create a total boss kc column
+        self.df_clean["boss_total"] = (
+            self.df_clean[self.bosses].sum(axis=1).astype(np.int32)
+        )
 
         # fillna
         self.df_clean.fillna(0, inplace=True)
+
+        # apply smaller data types to reduce memory usage
+        non_total_features = [
+            col for col in self.df_clean.columns if "total" not in col
+        ]
+        self.df_clean[non_total_features] = self.df_clean[non_total_features].astype(
+            np.int32
+        )
 
         # get low lvl players
         mask = self.df_clean["total"] < 1_000_000
@@ -159,7 +115,6 @@ class hiscoreData:
     def __skill_ratio(self):
         """
         Create a dataframe with the ratio of each skill to the total level.
-
         This method will:
             - create a dataframe with the index of the original dataframe
             - create a column for each skill with the ratio of the skill to the total level
@@ -170,29 +125,27 @@ class hiscoreData:
         total = self.df_clean["total"]
 
         for skill in self.skills:
-            self.skill_ratio[f"{skill}/total"] = self.df_clean[skill] / total
+            self.skill_ratio[f"{skill}/total"] = (self.df_clean[skill] / total).astype(
+                np.float16
+            )
 
         self.skill_ratio.fillna(0, inplace=True)
 
     def __boss_ratio(self):
         """
         Create a dataframe with the ratio of each boss to the total boss level.
-
         This method will:
             - create a dataframe with the index of the original dataframe
             - create a column for each boss with the ratio of the boss to the total boss level
             - fill na with 0
         """
         self.boss_ratio = pd.DataFrame(index=self.df_clean.index)
-        # logger.debug(
-        #     self.df_clean.describe()
-        # )
-        # logger.debug(
-        #     self.df_clean.info()
-        # )
+
         total = self.df_clean["boss_total"]
         for boss in self.bosses:
-            self.boss_ratio[f"{boss}/total"] = self.df_clean[boss] / total
+            self.boss_ratio[f"{boss}/total"] = (self.df_clean[boss] / total).astype(
+                np.float16
+            )
 
         self.boss_ratio.fillna(0, inplace=True)
 
@@ -201,11 +154,9 @@ class hiscoreData:
     ):
         """
         Create a dataframe with the features.
-
         This method will:
             - create a dataframe with the index of the original dataframe
             - merge the original dataframe, the skill ratio dataframe and the boss ratio dataframe
-
         Parameters
         ----------
         base : bool, optional
@@ -214,7 +165,6 @@ class hiscoreData:
             Whether to include the skill ratio dataframe, by default True
         boss_ratio : bool, optional
             Whether to include the boss ratio dataframe, by default True
-
         Returns
         -------
         pd.DataFrame
@@ -242,7 +192,6 @@ class playerData:
     def __init__(self, player_data: List[dict], label_data: List[dict]) -> None:
         """
         Initialize the class.
-
         Parameters
         ----------
         player_data : List[dict]
@@ -257,7 +206,6 @@ class playerData:
     def __clean(self):
         """
         Clean the data.
-
         This method will:
             - set the index of the player dataframe to the player id
             - set the index of the label dataframe to the label id
@@ -266,6 +214,18 @@ class playerData:
         """
         # clean players
         self.df_players.set_index("id", inplace=True)
+
+        # reduce memory of player dataframe
+        small_size_columns = [
+            "possible_ban",
+            "confirmed_ban",
+            "confirmed_player",
+            "label_id",
+            "label_jagex",
+        ]
+        self.df_players[small_size_columns] = self.df_players[
+            small_size_columns
+        ].astype(np.int8)
 
         # clean labels
         self.df_labels.set_index("id", inplace=True)
@@ -284,25 +244,22 @@ class playerData:
     def get(self, binary: bool = False):
         """
         Get the target data.
-
         This method will:
             - return the binary label or the label column
-
         Parameters
         ----------
         binary : bool, optional
             Whether to return the binary label or not, by default False
-
         Returns
         -------
         pd.DataFrame
             Dataframe containing the target data
         """
         if binary:
-            out = self.df_players.loc[:, ["binary_label"]]
+            out = self.df_players.loc[:, ["binary_label"]].astype(np.int8)
             out.rename(columns={"binary_label": "target"}, inplace=True)
         else:
-            out = self.df_players.loc[:, ["label"]]
+            out = self.df_players.loc[:, ["label"]].astype("category")
             out.rename(columns={"label": "target"}, inplace=True)
 
         return out

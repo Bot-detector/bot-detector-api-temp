@@ -29,6 +29,10 @@ def predict(
     low_level = hiscores.df_low.index
     hiscores = hiscores.features()
 
+    logger.debug(f"Reordering features")
+    cols_when_model_builds = binary_classifier.feature_names_in_
+    hiscores = hiscores[cols_when_model_builds]
+
     logger.debug(f"Predicting binary for players")
     # binary prediction
     binary_pred = binary_classifier.predict_proba(hiscores)
