@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import time
 
 import joblib
@@ -9,7 +10,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (balanced_accuracy_score, classification_report,
                              roc_auc_score)
 
+import src
+
 logger = logging.getLogger(__name__)
+
+
+# sys.modules["api"] = src
+# sys.modules["api.MachineLearning.classifier"] = src.cogs.classifier
 
 class classifier(RandomForestClassifier):
     """

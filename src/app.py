@@ -1,4 +1,3 @@
-import imp
 import logging
 
 import aiohttp
@@ -11,9 +10,14 @@ from src.cogs import predict
 from src.cogs import classifier
 from src.cogs import train_model
 from src.routers import feedback, legacy, report
-from src.cogs.data import skills, minigames, bosses
+from src.cogs.Inputs import Inputs
 
-highscore_stat = skills + minigames + bosses
+import sys
+import src
+sys.modules["api"] = src
+sys.modules["api.MachineLearning.classifier"] = src.cogs.classifier
+
+highscore_stat = Inputs.skills + Inputs.minigames + Inputs.bosses
 logger = logging.getLogger(__name__)
 
 scraper = Scraper(proxy="")
@@ -68,10 +72,9 @@ async def get_account_prediction_result(name: str, breakdown: Optional[bool] = F
             detail="The Player is not found on the hiscores.",
         )
 
-    _ = [player_data.pop(p) for p in player_data if p not in highscore_stat]
-    _ = [print({k: v}) for k, v in player_data.items()]
-    # v = player_data.pop('phantom_muspah', None)
-    # print(v)
+    # _ = [print({k: v}) for k, v in player_data.items()]
+    _ = player_data.pop("PvP Arena - Rank")
+    _ = player_data.pop("rifts_closed")
 
     data = predict.predict([player_data], [player], binary_classifier, multi_classifier)
     data = data[0]
