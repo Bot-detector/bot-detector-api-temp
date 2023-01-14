@@ -4,14 +4,16 @@ import logging
 import aiohttp
 from fastapi import status
 from fastapi.exceptions import HTTPException
-
+from typing import List, Optional
 from src.cogs.scraper import Scraper
 from src.config import app
 from src.cogs import predict
 from src.cogs import classifier
 from src.cogs import train_model
+from src.routers import feedback, legacy, report
+from src.cogs.data import skills, minigames, bosses
 
-
+highscore_stat = skills + minigames + bosses
 logger = logging.getLogger(__name__)
 
 scraper = Scraper(proxy="")
@@ -23,6 +25,11 @@ if binary_classifier is None or multi_classifier is None:
     binary_classifier = classifier.classifier("binaryClassifier")
     multi_classifier = classifier.classifier("multiClassifier")
 
+app.include_router(feedback.router)
+app.include_router(legacy.router)
+app.include_router(report.router)
+
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -31,6 +38,7 @@ async def root():
 @app.get("/favicon")
 async def favicon():
     return {}
+
 
 @app.get("/train")
 def train():
@@ -43,30 +51,14 @@ def train():
     train_model.train(binary_classifier, multi_classifier)
     binary_classifier = classifier.classifier("binaryClassifier").load()
     multi_classifier = classifier.classifier("multiClassifier").load()
-    return {
-        "detail": "model trained"
-    }
-
-@app.post("/{version}/plugin/detect/{manual_detect}")
-async def post_detect(version, manual_detect):
-    raise HTTPException(
-        status_code=status.HTTP_418_IM_A_TEAPOT,
-        detail="The Plugin is currently in Safe Mode while we restore full functionality.",
-    )
+    return {"detail": "model trained"}
 
 
-@app.get("/{version}/stats/contributions/{contributor}")
-async def get_contributions(version, contributor):
-    raise HTTPException(
-        status_code=status.HTTP_418_IM_A_TEAPOT,
-        detail="The Plugin is currently in Safe Mode while we restore full functionality.",
-    )
-
-
-@app.get("/{version}/site/prediction/{player_name}")
-async def get_prediction(player_name, version=None, token=None):
+####################
+@app.get("/v1/prediction", tags=["Prediction"])
+async def get_account_prediction_result(name: str, breakdown: Optional[bool] = False):
     # scrape hiscores
-    player = {"id": 1, "name": player_name}
+    player = {"id": 1, "name": name}
     async with aiohttp.ClientSession() as session:
         player_data = await scraper.lookup_hiscores(player=player, session=session)
 
@@ -75,7 +67,12 @@ async def get_prediction(player_name, version=None, token=None):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="The Player is not found on the hiscores.",
         )
-        
+
+    _ = [player_data.pop(p) for p in player_data if p not in highscore_stat]
+    _ = [print({k: v}) for k, v in player_data.items()]
+    # v = player_data.pop('phantom_muspah', None)
+    # print(v)
+
     data = predict.predict([player_data], [player], binary_classifier, multi_classifier)
     data = data[0]
     # [logger.debug({k:v}) for k,v in data.items()]
@@ -83,8 +80,8 @@ async def get_prediction(player_name, version=None, token=None):
         "player_id": data.pop("id"),
         "player_name": data.pop("name"),
         "prediction_label": data.pop("Prediction"),
-        "prediction_confidence": float(data.pop("Predicted_confidence"))/100,
+        "prediction_confidence": float(data.pop("Predicted_confidence")) / 100,
         "created": data.pop("created"),
-        "predictions_breakdown": {k:float(v)/100 for k,v in data.items()},
+        "predictions_breakdown": {k: float(v) / 100 for k, v in data.items()},
     }
     return data
