@@ -7,11 +7,14 @@ services:
       args:
         root_path: /
         api_port: 5000
-    image: bot-detector/bd-api-temp:latest
+    container_name: bd-api-temp
+    command: uvicorn src.app:app --host 0.0.0.0 --reload --reload-include src/*
     ports:
       - 5000:5000
     networks:
       - botdetector-network
+    volumes:
+      - ./src:/project/src:rw
       
 networks:
   botdetector-network:

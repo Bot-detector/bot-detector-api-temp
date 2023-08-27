@@ -1,26 +1,24 @@
 import logging
+import sys
+from typing import List, Optional
 
 import aiohttp
 from fastapi import status
 from fastapi.exceptions import HTTPException
-from typing import List, Optional
-from src.cogs.scraper import Scraper
-from src.config import app
-from src.cogs import predict
-from src.cogs import classifier
-from src.cogs import train_model
-from src.routers import feedback, legacy, report
-from src.cogs.Inputs import Inputs
 
-import sys
 import src
+from src.cogs import classifier, predict, train_model
+from src.cogs.highscore_api import HighscoreApi
+from src.cogs.Inputs import Inputs
+from src.cogs.validation.player import Player
+from src.config import app
+from src.routers import feedback, legacy, report
+
 sys.modules["api"] = src
 sys.modules["api.MachineLearning.classifier"] = src.cogs.classifier
 
 highscore_stat = Inputs.skills + Inputs.minigames + Inputs.bosses
 logger = logging.getLogger(__name__)
-
-scraper = Scraper(proxy="")
 
 binary_classifier = classifier.classifier("binaryClassifier").load()
 multi_classifier = classifier.classifier("multiClassifier").load()
@@ -63,8 +61,12 @@ def train():
 async def get_account_prediction_result(name: str, breakdown: Optional[bool] = False):
     # scrape hiscores
     player = {"id": 1, "name": name}
+    highscore_api = HighscoreApi(proxy="")
     async with aiohttp.ClientSession() as session:
-        player_data = await scraper.lookup_hiscores(player=player, session=session)
+        player_data = await highscore_api.lookup_hiscores(
+            player=Player(id=1, name=name), session=session
+        )
+        # logger.debug(player_data)
 
     if player_data is None:
         raise HTTPException(
@@ -72,9 +74,10 @@ async def get_account_prediction_result(name: str, breakdown: Optional[bool] = F
             detail="The Player is not found on the hiscores.",
         )
 
+    player_data["Tempoross"] = player_data.pop("tempoross")
     # _ = [print({k: v}) for k, v in player_data.items()]
-    _ = player_data.pop("PvP Arena - Rank")
-    _ = player_data.pop("rifts_closed")
+    # _ = player_data.pop("PvP Arena - Rank")
+    # _ = player_data.pop("rifts_closed")
 
     data = predict.predict([player_data], [player], binary_classifier, multi_classifier)
     data = data[0]

@@ -8,8 +8,10 @@ ENV UVICORN_ROOT_PATH ${root_path}
 
 WORKDIR /project
 
-COPY . /project/
+COPY ./requirements.txt /project/
 
 RUN pip install -r requirements.txt
 
-CMD ["uvicorn", "src.app:app", "--proxy-headers", "--host", "0.0.0.0"] 
+COPY ./src /project/src
+
+CMD ["uvicorn", "src.app:app", "--proxy-headers", "--host", "0.0.0.0"]  
