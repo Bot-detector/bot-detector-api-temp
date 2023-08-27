@@ -14,7 +14,7 @@ on:
 
 env:
   VALUE_FILE: bd-temp-prd/deployment.yaml
-  REGISTRY: quay.io/bot_detector/bd-core-files
+  REGISTRY: quay.io/bot_detector/bd-temp-api
   ENVIRONMENT: prd
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
